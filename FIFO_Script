@@ -1,0 +1,163 @@
+function createReport_LIFO () {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const inputSheet = ss.getSheetByName('History');
+  const report = ss.getSheetByName('Report');
+  const data = inputSheet.getRange(2, 1, inputSheet.getLastRow() - 1, 9).getValues();
+  const filterd = data.filter(row => row[2] == 'Buy' || row[2] == 'Sell');
+  const sorted = filterd.sort((a, b) => {
+    if (a[0] < b[0]) return 1
+    if (a[0] > b[0]) return -1
+    else return 0
+  })
+
+  //console.log(sorted);
+  const securityObject = sorted.reduce((acc, curr) => {
+    if (curr[1] in acc) {
+      if (curr[2] in acc[curr[1]]) {
+        acc[curr[1]][curr[2]].push(curr)
+      } else {
+        acc[curr[1]] = { ...acc[curr[1]], [curr[2]]: [curr] }
+      }
+    } else {
+      acc[curr[1]] = { [curr[2]]: [curr] }
+    }
+    return acc
+  }, {});
+
+  console.log(JSON.stringify(securityObject));
+  //console.log(securityObject);
+
+  const objects = [];
+
+  Object.keys(securityObject).forEach(ticker => {
+    const tic = securityObject[ticker];
+    let index = 0;
+
+    try {
+      tic.Sell.forEach(sell => {
+        const [date, security, , quanity, total, , account, ] = sell;
+        let totalBuy = 0;
+        let remainder = quanity;
+
+        do {
+          let [, , , buyQuanity, , buyPrice] = tic.Buy[index];
+          if (buyQuanity < remainder) {
+            totalBuy += (buyQuanity * buyPrice);
+            remainder -= buyQuanity;
+            index++;
+          } else {
+            totalBuy += (remainder * buyPrice);
+            securityObject[ticker].Buy[index][3] = (buyQuanity - remainder);
+            buyQuanity -= remainder;
+            remainder = 0;
+            if (buyQuanity <= 0) {
+              index++;
+            }
+          }
+        } while (remainder > 0);
+
+        objects.push({
+          date,
+          security,
+          account,
+          quanity,
+          totalBuy,
+          total,
+          result: total - totalBuy
+        })
+      })
+    } catch (err) {
+      console.log(err)
+    }
+  })
+
+  const convertToSheetsArray = [["Sell Date", "Security", "Account", "Quantity Sold", "Total Buy", "Total Sell", "Result"]]
+  objects.forEach(obj => convertToSheetsArray.push(Object.values(obj)));
+  report.getDataRange().clearContent();
+  report.getRange(1, 1, convertToSheetsArray.length, 7).setValues(convertToSheetsArray);
+}
+
+
+// Produced Errors
+/*
+10:25:02 AM Info    [TypeError: Cannot read property 'forEach' of undefined]
+10:25:02 AM Info    [TypeError: Cannot read property 'forEach' of undefined]
+10:25:02 AM Info    [TypeError: undefined is not iterable (cannot read property Symbol(Symbol.iterator))]
+10:25:02 AM Info    [TypeError: Cannot read property 'forEach' of undefined]
+10:25:02 AM Info    [TypeError: Cannot read property 'forEach' of undefined]
+10:25:02 AM Info    [TypeError: Cannot read property 'forEach' of undefined]
+10:25:02 AM Info    [TypeError: Cannot read property 'forEach' of undefined]
+10:25:02 AM Info    [TypeError: Cannot read property 'forEach' of undefined]
+10:25:02 AM Info    [TypeError: Cannot read property 'forEach' of undefined]
+10:25:02 AM Info    [TypeError: Cannot read property 'forEach' of undefined]
+10:25:02 AM Info    [TypeError: Cannot read property 'forEach' of undefined]
+10:25:02 AM Info    [TypeError: undefined is not iterable (cannot read property Symbol(Symbol.iterator))]
+10:25:02 AM Info    [TypeError: Cannot read property 'forEach' of undefined]
+10:25:02 AM Info    [TypeError: Cannot read property 'forEach' of undefined]
+10:25:02 AM Info    [TypeError: Cannot read property 'forEach' of undefined]
+10:25:02 AM Info    [TypeError: Cannot read property 'forEach' of undefined]
+10:25:02 AM Info    [TypeError: Cannot read property 'forEach' of undefined]
+10:25:02 AM Info    [TypeError: Cannot read property 'forEach' of undefined]
+*/
+
+//Output of tic.Sell.ForEach
+/*
+10:25:02 AM Info    [TypeError: Cannot read property 'forEach' of undefined]
+10:25:02 AM Info    [TypeError: Cannot read property 'forEach' of undefined]
+10:25:02 AM Info    [TypeError: undefined is not iterable (cannot read property Symbol(Symbol.iterator))]
+10:25:02 AM Info    [TypeError: Cannot read property 'forEach' of undefined]
+10:25:02 AM Info    [TypeError: Cannot read property 'forEach' of undefined]
+10:25:02 AM Info    [TypeError: Cannot read property 'forEach' of undefined]
+10:25:02 AM Info    [TypeError: Cannot read property 'forEach' of undefined]
+10:25:02 AM Info    [TypeError: Cannot read property 'forEach' of undefined]
+10:25:02 AM Info    [TypeError: Cannot read property 'forEach' of undefined]
+10:25:02 AM Info    [TypeError: Cannot read property 'forEach' of undefined]
+10:25:02 AM Info    [TypeError: Cannot read property 'forEach' of undefined]
+10:25:02 AM Info    [TypeError: undefined is not iterable (cannot read property Symbol(Symbol.iterator))]
+10:25:02 AM Info    [TypeError: Cannot read property 'forEach' of undefined]
+10:25:02 AM Info    [TypeError: Cannot read property 'forEach' of undefined]
+10:25:02 AM Info    [TypeError: Cannot read property 'forEach' of undefined]
+10:25:02 AM Info    [TypeError: Cannot read property 'forEach' of undefined]
+10:25:02 AM Info    [TypeError: Cannot read property 'forEach' of undefined]
+10:25:02 AM Info    [TypeError: Cannot read property 'forEach' of undefined]
+I am hoping someone here can help me solve this issue.
+
+EDIT1: Adding the console.log output of tic.Sell
+
+2:02:36 PM  Info    undefined
+2:02:36 PM  Info    [ [ Thu Oct 21 2021 18:00:00 GMT-0400 (Eastern Daylight Time),
+    'MATIC',
+    'Sell',
+    37.14,
+    61.82,
+    1.6645126548196014,
+    'Binance',
+    'Cryptocurrency',
+    '' ] ]
+2:02:36 PM  Info    undefined
+2:02:36 PM  Info    [ [ Wed Oct 20 2021 18:00:00 GMT-0400 (Eastern Daylight Time),
+    'TFUEL',
+    'Sell',
+    754,
+    182,
+    0.2413793103448276,
+    'Binance',
+    'Cryptocurrency',
+    '' ] ]
+2:02:36 PM  Info    [ [ Wed Oct 20 2021 18:00:00 GMT-0400 (Eastern Daylight Time),
+    'THETA',
+    'Sell',
+    81.4,
+    397.73,
+    4.886117936117936,
+    'Binance',
+    'Cryptocurrency',
+    '' ] ]
+2:02:36 PM  Info    undefined
+2:02:36 PM  Info    undefined
+2:02:36 PM  Info    undefined
+2:02:36 PM  Info    undefined
+2:02:36 PM  Info    [ [ Sun Aug 08 2021 18:00:00 GMT-0400 (Eastern Daylight Time),
+    'safemars',
+    
+*/
